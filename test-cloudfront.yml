@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  lambdaCodeVersion:
+    Type: String
+Resources:
+  edgelambdarole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: edgelambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+  testdistribuation:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          ViewerProtocolPolicy: allow-all
+          ForwardedValues:
+            QueryString: 'false'
+          TargetOriginId: MyOrigin
+          LambdaFunctionAssociations:
+            - EventType: origin-request
+              LambdaFunctionARN: !Ref edgelambdaVersion
+        Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
+              HTTPPort: 80
+            Id: MyOrigin
+            DomainName: aws.amazon.com
+  edgelambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        S3Bucket: test-cf-lambda-code
+        S3Key: index.js.zip
+        S3ObjectVersion: !Ref lambdaCodeVersion
+      FunctionName: !Join 
+        - '-'
+        - - edgelambda
+          - !Ref lambdaCodeVersion
+      Handler: index.handler
+      Role: !GetAtt 
+        - edgelambdarole
+        - Arn
+      Timeout: 5
+      Runtime: nodejs12.x
+  edgelambdaVersion:
+    Type: 'AWS::Lambda::Version'
+    Properties:
+      FunctionName: !Ref edgelambda
