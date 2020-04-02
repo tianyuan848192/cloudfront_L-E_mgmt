@@ -1,7 +1,17 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  lambdaCodeVersion:
+  FirstLaunch:
     Type: String
+    Default: False
+    AllowedValues:
+      - True
+      - False
+    ConstraintDescription: True for Fist Launch the template, False for Update.
+  LambdaVersion:
+    Type: String
+    Default: NONE
+Conditions:
+  FirstLaunch: !Equals [ !Ref FirstLaunch, True ]
 Resources:
   edgelambdarole:
     Type: 'AWS::IAM::Role'
@@ -20,7 +30,7 @@ Resources:
               Service:
                 - lambda.amazonaws.com
                 - edgelambda.amazonaws.com
-  testdistribuation:
+  testdistribuationupdate:
     Type: 'AWS::CloudFront::Distribution'
     Properties:
       DistributionConfig:
@@ -31,7 +41,7 @@ Resources:
           TargetOriginId: MyOrigin
           LambdaFunctionAssociations:
             - EventType: origin-request
-              LambdaFunctionARN: !Ref edgelambdaVersion
+              LambdaFunctionARN: !If [FirstLaunch, !Ref edgelambdaVersion, !Ref LambdaVersion]
         Enabled: true
         Origins:
           - CustomOriginConfig:
@@ -45,13 +55,11 @@ Resources:
       Code:
         S3Bucket: test-cf-lambda-code
         S3Key: index.js.zip
-        S3ObjectVersion: !Ref lambdaCodeVersion
-      FunctionName: !Join 
+      FunctionName: !Join
         - '-'
-        - - edgelambda
-          - !Ref lambdaCodeVersion
+        - - testlambda
       Handler: index.handler
-      Role: !GetAtt 
+      Role: !GetAtt
         - edgelambdarole
         - Arn
       Timeout: 5
